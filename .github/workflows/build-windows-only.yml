@@ -21,10 +21,14 @@ jobs:
     name: Generate Flutter-Rust Bridge
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout source code
+      - name: Checkout source code (without automatic submodules fetch)
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Update submodule to latest remote commit
+        run: |
+          git submodule update --init --recursive --remote
 
       - name: Install prerequisites
         run: |
@@ -89,10 +93,14 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Checkout source code
+      - name: Checkout source code (without automatic submodules fetch)
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Update submodule to latest remote commit
+        run: |
+          git submodule update --init --recursive --remote
 
       - name: Restore bridge files
         uses: actions/download-artifact@v4
