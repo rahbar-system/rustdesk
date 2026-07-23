@@ -1,0 +1,69 @@
+name: Build Windows 32-bit (Sciter)
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  LIBCLANG_PATH: C:\Program Files (x86)\LLVM\bin
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: i686-pc-windows-msvc
+          override: true
+      
+      - name: Install LLVM (32-bit)
+        run: |
+          curl -LJO https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.2/LLVM-15.0.2-win32.exe
+          Start-Process -Wait -FilePath .\LLVM-15.0.2-win32.exe
+        shell: pwsh
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+          vcpkgGitCommitId: '6f29f12e82a8293156836ad81cc9bf5af41fe836'  # Version used by RustDesk
+
+      - name: Install vcpkg dependencies (32-bit)
+        run: |
+          $env:VCPKG_ROOT = "${{ github.workspace }}\vcpkg"
+          & "$env:VCPKG_ROOT\vcpkg" install libvpx:x86-windows-static libyuv:x86-windows-static opus:x86-windows-static aom:x86-windows-static
+        shell: pwsh
+
+      - name: Download Sciter.dll (32-bit)
+        run: |
+          mkdir -p target/i686-pc-windows-msvc/release
+          curl -LJ -o target/i686-pc-windows-msvc/release/sciter.dll https://github.com/c-smile/sciter-sdk/raw/master/bin.win/x32/sciter.dll
+        shell: bash
+
+      - name: Build RustDesk (32-bit)
+        run: |
+          cargo build --target i686-pc-windows-msvc --release --features gpucodec
+        shell: bash
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p Release
+          cp target/i686-pc-windows-msvc/release/rustdesk.exe Release/
+          cp target/i686-pc-windows-msvc/release/sciter.dll Release/
+        shell: bash
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustdesk-win32-sciter
+          path: Release/
+          retention-days: 30
